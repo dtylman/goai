@@ -1,5 +1,4 @@
 package gemini
-package gemini
 
 // Models returns the list of known Gemini model identifiers.
 func Models() []string {
