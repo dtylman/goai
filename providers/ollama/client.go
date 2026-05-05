@@ -5,9 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"net/url"
-	"os"
 
 	"github.com/dtylman/goai/chat"
 	"github.com/ollama/ollama/api"
@@ -25,23 +22,9 @@ func New(cfg Config) (*Client, error) {
 		return nil, errors.New("ollama: model is required")
 	}
 
-	var c *api.Client
-	var err error
-
-	if cfg.BaseURL != "" {
-		base, parseErr := url.Parse(cfg.BaseURL)
-		if parseErr != nil {
-			return nil, fmt.Errorf("ollama: invalid base URL: %w", parseErr)
-		}
-		c = api.NewClient(base, http.DefaultClient)
-	} else {
-		if os.Getenv("OLLAMA_HOST") == "" {
-			os.Setenv("OLLAMA_HOST", "http://localhost:11434")
-		}
-		c, err = api.ClientFromEnvironment()
-		if err != nil {
-			return nil, fmt.Errorf("ollama: %w", err)
-		}
+	c, err := newAPIClient(cfg.BaseURL)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Client{c: c, model: cfg.Model}, nil
