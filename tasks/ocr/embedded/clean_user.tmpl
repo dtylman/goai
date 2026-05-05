@@ -1,0 +1,7 @@
+Clean and structure the following OCR segments from page {{.Page}}.
+
+Raw segments:
+{{range .Segments}}---
+[font_size={{printf "%.1f" .FontSize}}] {{.Text}}
+{{end}}
+Return the cleaned text as structured JSON.
