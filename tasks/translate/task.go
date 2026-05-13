@@ -9,17 +9,17 @@ import (
 
 // Task orchestrates translation workflows.
 type Task struct {
-	router          chat.Router
+	client          chat.Client
 	project         *ProjectContext
 	style           string
 	autoProofread   bool
 	promptOverrides map[string]string
 }
 
-// New creates a new translation Task with the given router and options.
-func New(router chat.Router, opts ...Option) *Task {
+// New creates a new translation Task with the given client and options.
+func New(client chat.Client, opts ...Option) *Task {
 	t := &Task{
-		router:          router,
+		client:          client,
 		style:           "strict",
 		promptOverrides: make(map[string]string),
 	}
@@ -57,11 +57,6 @@ func (t *Task) Fix(ctx context.Context, req *Request, badTranslation string) (*R
 }
 
 func (t *Task) doTranslate(ctx context.Context, req *Request) (*Result, error) {
-	client, err := t.router.Resolve("translate")
-	if err != nil {
-		return nil, fmt.Errorf("resolve translate client: %w", err)
-	}
-
 	style := req.Style
 	if style != "" {
 		// Temporarily override style for this request
@@ -95,7 +90,7 @@ func (t *Task) doTranslate(ctx context.Context, req *Request) (*Result, error) {
 	}
 
 	var cr chatResponse
-	if _, err := chat.ChatInto(ctx, client, chatReq, &cr); err != nil {
+	if _, err := chat.ChatInto(ctx, t.client, chatReq, &cr); err != nil {
 		return nil, fmt.Errorf("translate: %w", err)
 	}
 
@@ -103,11 +98,6 @@ func (t *Task) doTranslate(ctx context.Context, req *Request) (*Result, error) {
 }
 
 func (t *Task) doProofread(ctx context.Context, req *Request, translation string) (*Result, error) {
-	client, err := t.router.Resolve("proofread")
-	if err != nil {
-		return nil, fmt.Errorf("resolve proofread client: %w", err)
-	}
-
 	data := &promptData{
 		SourceLang:     req.SourceLanguage,
 		TargetLang:     req.TargetLanguage,
@@ -133,7 +123,7 @@ func (t *Task) doProofread(ctx context.Context, req *Request, translation string
 	}
 
 	var cr chatResponse
-	if _, err := chat.ChatInto(ctx, client, chatReq, &cr); err != nil {
+	if _, err := chat.ChatInto(ctx, t.client, chatReq, &cr); err != nil {
 		return nil, fmt.Errorf("proofread: %w", err)
 	}
 
@@ -141,11 +131,6 @@ func (t *Task) doProofread(ctx context.Context, req *Request, translation string
 }
 
 func (t *Task) doFix(ctx context.Context, req *Request, badTranslation string) (*Result, error) {
-	client, err := t.router.Resolve("fix")
-	if err != nil {
-		return nil, fmt.Errorf("resolve fix client: %w", err)
-	}
-
 	data := &promptData{
 		SourceLang:     req.SourceLanguage,
 		TargetLang:     req.TargetLanguage,
@@ -171,7 +156,7 @@ func (t *Task) doFix(ctx context.Context, req *Request, badTranslation string) (
 	}
 
 	var cr chatResponse
-	if _, err := chat.ChatInto(ctx, client, chatReq, &cr); err != nil {
+	if _, err := chat.ChatInto(ctx, t.client, chatReq, &cr); err != nil {
 		return nil, fmt.Errorf("fix: %w", err)
 	}
 

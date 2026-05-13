@@ -9,15 +9,15 @@ import (
 
 // Task orchestrates OCR text cleanup.
 type Task struct {
-	router          chat.Router
+	client          chat.Client
 	project         *ProjectContext
 	promptOverrides map[string]string
 }
 
-// New creates a new OCR cleanup Task with the given router and options.
-func New(router chat.Router, opts ...Option) *Task {
+// New creates a new OCR cleanup Task with the given client and options.
+func New(client chat.Client, opts ...Option) *Task {
 	t := &Task{
-		router:          router,
+		client:          client,
 		promptOverrides: make(map[string]string),
 	}
 	for _, opt := range opts {
@@ -28,11 +28,6 @@ func New(router chat.Router, opts ...Option) *Task {
 
 // Clean processes raw OCR segments and returns structured, cleaned text.
 func (t *Task) Clean(ctx context.Context, req *Request) (*Result, error) {
-	client, err := t.router.Resolve("clean")
-	if err != nil {
-		return nil, fmt.Errorf("resolve clean client: %w", err)
-	}
-
 	data := &promptData{
 		Page:           req.Page,
 		Segments:       req.Segments,
@@ -56,7 +51,7 @@ func (t *Task) Clean(ctx context.Context, req *Request) (*Result, error) {
 	}
 
 	var result Result
-	if _, err := chat.ChatInto(ctx, client, chatReq, &result); err != nil {
+	if _, err := chat.ChatInto(ctx, t.client, chatReq, &result); err != nil {
 		return nil, fmt.Errorf("clean page %d: %w", req.Page, err)
 	}
 

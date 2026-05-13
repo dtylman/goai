@@ -373,7 +373,7 @@ A full translation cycle may include multiple distinct steps, each potentially u
 2. **Proofread** — review translation for grammar and naturalness
 3. **Fix** — re-translate a paragraph flagged as poor quality
 
-Each step has its own prompt template and can be routed to a different model via the Router.
+Each step has its own prompt template.
 
 ### Translation input model
 
@@ -418,77 +418,22 @@ func WithStyle(style string) Option
 
 This keeps the base request simple for ad-hoc translation while allowing rich context for document-scale workflows.
 
-### Multi-model orchestration
-
-A single task may involve multiple steps that benefit from different models.
-
-Examples:
-
-- Use DeepSeek (strong reasoning) for initial translation, then Gemini for proofreading
-- Use a cheap fast model for simple paragraphs, a powerful model for complex ones
-- Use one model for structured extraction, another for creative rephrasing
-
-Tasks should not be limited to a single client. Instead, they should accept a client resolver that maps a role or step name to the appropriate client.
-
-### Client routing
-
-The routing abstraction should be simple and composable:
-
-```go
-package chat
-
-// Router resolves a named role to a concrete client.
-// Roles are task-defined strings like "translate", "proofread", "summarize".
-type Router interface {
-    Resolve(role string) (Client, error)
-}
-```
-
-A trivial implementation wraps a single client for simple cases:
-
-```go
-// SingleClient returns a Router that always resolves to the same client.
-func SingleClient(c Client) Router
-```
-
-A multi-client setup maps step names to different providers:
-
-```go
-// Map returns a Router backed by explicit role-to-client mappings.
-// If a default is provided, unknown roles fall back to it.
-func Map(clients map[string]Client, defaultClient Client) Router
-```
-
-This keeps the simple case trivial while letting advanced callers control model selection per step.
-
 ### Suggested translation API direction
 
 ```go
 package translate
 
 type Task struct {
-    router  chat.Router
+    client  chat.Client
     options Options
 }
 
-func New(router chat.Router, opts ...Option) *Task
+func New(client chat.Client, opts ...Option) *Task
 
 func (t *Task) Translate(ctx context.Context, req *Request) (*Result, error)
 ```
 
-The task internally resolves clients by step:
-
-```go
-func (t *Task) Translate(ctx context.Context, req *Request) (*Result, error) {
-    translator, err := t.router.Resolve("translate")
-    // ... perform translation ...
-
-    proofreader, err := t.router.Resolve("proofread")
-    // ... proofread result ...
-}
-```
-
-If the caller passes `chat.SingleClient(c)`, both steps use the same model. If the caller passes a map, each step goes to the optimal provider.
+Tasks accept a single `chat.Client`. If different steps need different models, callers can create separate task instances or compose at a higher level.
 
 ### Data-driven routing
 
@@ -581,30 +526,10 @@ resp, err := chat.ChatInto(ctx, client, &chat.Request{
 }, &summary)
 ```
 
-### Task usage (single model)
+### Task usage
 
 ```go
-translator := translate.New(chat.SingleClient(client))
-
-result, err := translator.Translate(ctx, &translate.Request{
-    SourceLanguage: "en",
-    TargetLanguage: "he",
-    Text:           "The archive preserves several manuscript traditions.",
-})
-```
-
-### Task usage (multi-model)
-
-```go
-ds, _ := deepseek.New(deepseek.Config{APIKey: dsKey, Model: "deepseek-reasoner"})
-gm, _ := gemini.New(gemini.Config{APIKey: gmKey, Model: "gemini-2.0-flash"})
-
-router := chat.Map(map[string]chat.Client{
-    "translate": ds,
-    "proofread": gm,
-}, ds)
-
-translator := translate.New(router)
+translator := translate.New(client)
 
 result, err := translator.Translate(ctx, &translate.Request{
     SourceLanguage: "en",

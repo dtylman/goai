@@ -36,7 +36,7 @@ func TestClean_Basic(t *testing.T) {
 	respJSON, _ := json.Marshal(result)
 
 	mock := &mockClient{response: string(respJSON)}
-	task := ocr.New(chat.SingleClient(mock))
+	task := ocr.New(mock)
 
 	got, err := task.Clean(context.Background(), &ocr.Request{
 		Page: 42,
@@ -69,7 +69,7 @@ func TestClean_UsesSchema(t *testing.T) {
 	respJSON, _ := json.Marshal(result)
 
 	mock := &mockClient{response: string(respJSON)}
-	task := ocr.New(chat.SingleClient(mock))
+	task := ocr.New(mock)
 
 	_, err := task.Clean(context.Background(), &ocr.Request{
 		Page:     1,
@@ -88,7 +88,7 @@ func TestClean_WithProjectContext(t *testing.T) {
 	respJSON, _ := json.Marshal(result)
 
 	mock := &mockClient{response: string(respJSON)}
-	task := ocr.New(chat.SingleClient(mock), ocr.WithProjectContext(&ocr.ProjectContext{
+	task := ocr.New(mock, ocr.WithProjectContext(&ocr.ProjectContext{
 		Title:  "War and Peace",
 		Author: "Tolstoy",
 		Genre:  "novel",
@@ -118,7 +118,7 @@ func TestClean_UserPromptContainsSegments(t *testing.T) {
 	respJSON, _ := json.Marshal(result)
 
 	mock := &mockClient{response: string(respJSON)}
-	task := ocr.New(chat.SingleClient(mock))
+	task := ocr.New(mock)
 
 	_, err := task.Clean(context.Background(), &ocr.Request{
 		Page: 7,
@@ -150,7 +150,7 @@ func TestClean_WithPromptOverride(t *testing.T) {
 	respJSON, _ := json.Marshal(result)
 
 	mock := &mockClient{response: string(respJSON)}
-	task := ocr.New(chat.SingleClient(mock),
+	task := ocr.New(mock,
 		ocr.WithSystemPrompt("Custom system for page {{.Page}}"),
 		ocr.WithUserPrompt("Custom user: {{range .Segments}}{{.Text}} {{end}}"),
 	)
@@ -169,32 +169,5 @@ func TestClean_WithPromptOverride(t *testing.T) {
 	user := mock.lastMessages[1].Content
 	if user != "Custom user: hello " {
 		t.Errorf("user prompt = %q", user)
-	}
-}
-
-func TestClean_MultiModelRouting(t *testing.T) {
-	result := &ocr.Result{Body: []ocr.Paragraph{{ID: "p1", Text: "cleaned"}}}
-	respJSON, _ := json.Marshal(result)
-
-	cleanMock := &mockClient{response: string(respJSON)}
-	defaultMock := &mockClient{response: string(respJSON)}
-
-	router := chat.Map(map[string]chat.Client{
-		"clean": cleanMock,
-	}, defaultMock)
-
-	task := ocr.New(router)
-	_, err := task.Clean(context.Background(), &ocr.Request{
-		Page:     1,
-		Segments: []ocr.Segment{{Text: "test", FontSize: 12}},
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if cleanMock.lastMessages == nil {
-		t.Error("expected clean mock to be called")
-	}
-	if defaultMock.lastMessages != nil {
-		t.Error("expected default mock to NOT be called")
 	}
 }

@@ -2,12 +2,24 @@ package translate_test
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
 	"github.com/dtylman/goai/chat"
 	"github.com/dtylman/goai/tasks/translate"
 )
+
+// chatResponse mirrors the task-internal type for test JSON generation.
+type chatResponse struct {
+	Translation string `json:"translation"`
+	Comments    string `json:"comments,omitempty"`
+}
+
+func jsonResp(text string) string {
+	b, _ := json.Marshal(chatResponse{Translation: text})
+	return string(b)
+}
 
 type mockClient struct {
 	lastMessages []chat.Message
@@ -20,8 +32,8 @@ func (m *mockClient) Chat(_ context.Context, req *chat.Request) (*chat.Response,
 }
 
 func TestTranslate_Basic(t *testing.T) {
-	mock := &mockClient{response: "שלום עולם"}
-	task := translate.New(chat.SingleClient(mock))
+	mock := &mockClient{response: jsonResp("שלום עולם")}
+	task := translate.New(mock)
 
 	result, err := task.Translate(context.Background(), &translate.Request{
 		SourceLanguage: "en",
@@ -41,8 +53,8 @@ func TestTranslate_Basic(t *testing.T) {
 }
 
 func TestTranslate_WithProjectContext(t *testing.T) {
-	mock := &mockClient{response: "translated"}
-	task := translate.New(chat.SingleClient(mock), translate.WithProjectContext(&translate.ProjectContext{
+	mock := &mockClient{response: jsonResp("translated")}
+	task := translate.New(mock, translate.WithProjectContext(&translate.ProjectContext{
 		Title: "The Great Novel",
 		Genre: "fiction",
 	}))
@@ -65,8 +77,8 @@ func TestTranslate_WithProjectContext(t *testing.T) {
 }
 
 func TestTranslate_WithWritingStyle(t *testing.T) {
-	mock := &mockClient{response: "translated"}
-	task := translate.New(chat.SingleClient(mock), translate.WithProjectContext(&translate.ProjectContext{
+	mock := &mockClient{response: jsonResp("translated")}
+	task := translate.New(mock, translate.WithProjectContext(&translate.ProjectContext{
 		Title:        "The Great Novel",
 		WritingStyle: "third-person omniscient, dark and introspective",
 	}))
@@ -86,8 +98,8 @@ func TestTranslate_WithWritingStyle(t *testing.T) {
 }
 
 func TestTranslate_WithGlossary(t *testing.T) {
-	mock := &mockClient{response: "translated"}
-	task := translate.New(chat.SingleClient(mock), translate.WithProjectContext(&translate.ProjectContext{
+	mock := &mockClient{response: jsonResp("translated")}
+	task := translate.New(mock, translate.WithProjectContext(&translate.ProjectContext{
 		Title: "Harry Potter",
 		Glossary: map[string]string{
 			"butter-beer": "בירת חמאה",
@@ -112,8 +124,8 @@ func TestTranslate_WithGlossary(t *testing.T) {
 }
 
 func TestFix_WithWritingStyleAndGlossary(t *testing.T) {
-	mock := &mockClient{response: "fixed"}
-	task := translate.New(chat.SingleClient(mock), translate.WithProjectContext(&translate.ProjectContext{
+	mock := &mockClient{response: jsonResp("fixed")}
+	task := translate.New(mock, translate.WithProjectContext(&translate.ProjectContext{
 		Title:        "The Book",
 		WritingStyle: "fast-paced with witty dialogue",
 		Glossary:     map[string]string{"wand": "שרביט"},
@@ -152,8 +164,8 @@ func TestGlossaryFormatted(t *testing.T) {
 }
 
 func TestTranslate_WithPreviousContext(t *testing.T) {
-	mock := &mockClient{response: "translated"}
-	task := translate.New(chat.SingleClient(mock))
+	mock := &mockClient{response: jsonResp("translated")}
+	task := translate.New(mock)
 
 	_, err := task.Translate(context.Background(), &translate.Request{
 		SourceLanguage: "en",
@@ -175,8 +187,8 @@ func TestTranslate_WithPreviousContext(t *testing.T) {
 }
 
 func TestTranslate_WithAutoProofread(t *testing.T) {
-	countingMock := &countingClient{responses: []string{"initial translation", "proofread result"}}
-	task := translate.New(chat.SingleClient(countingMock), translate.WithAutoProofread(true))
+	countingMock := &countingClient{responses: []string{jsonResp("initial translation"), jsonResp("proofread result")}}
+	task := translate.New(countingMock, translate.WithAutoProofread(true))
 
 	result, err := task.Translate(context.Background(), &translate.Request{
 		SourceLanguage: "en",
@@ -195,8 +207,8 @@ func TestTranslate_WithAutoProofread(t *testing.T) {
 }
 
 func TestProofread(t *testing.T) {
-	mock := &mockClient{response: "improved translation"}
-	task := translate.New(chat.SingleClient(mock))
+	mock := &mockClient{response: jsonResp("improved translation")}
+	task := translate.New(mock)
 
 	result, err := task.Proofread(context.Background(), &translate.Request{
 		SourceLanguage: "en",
@@ -216,8 +228,8 @@ func TestProofread(t *testing.T) {
 }
 
 func TestFix(t *testing.T) {
-	mock := &mockClient{response: "fixed translation"}
-	task := translate.New(chat.SingleClient(mock))
+	mock := &mockClient{response: jsonResp("fixed translation")}
+	task := translate.New(mock)
 
 	result, err := task.Fix(context.Background(), &translate.Request{
 		SourceLanguage: "en",
@@ -233,8 +245,8 @@ func TestFix(t *testing.T) {
 }
 
 func TestTranslate_LiteraryStyle(t *testing.T) {
-	mock := &mockClient{response: "literary result"}
-	task := translate.New(chat.SingleClient(mock), translate.WithStyle("literary"))
+	mock := &mockClient{response: jsonResp("literary result")}
+	task := translate.New(mock, translate.WithStyle("literary"))
 
 	_, err := task.Translate(context.Background(), &translate.Request{
 		SourceLanguage: "en",
@@ -251,8 +263,8 @@ func TestTranslate_LiteraryStyle(t *testing.T) {
 }
 
 func TestTranslate_StyleOverridePerRequest(t *testing.T) {
-	mock := &mockClient{response: "result"}
-	task := translate.New(chat.SingleClient(mock), translate.WithStyle("strict"))
+	mock := &mockClient{response: jsonResp("result")}
+	task := translate.New(mock, translate.WithStyle("strict"))
 
 	_, err := task.Translate(context.Background(), &translate.Request{
 		SourceLanguage: "en",
@@ -270,8 +282,8 @@ func TestTranslate_StyleOverridePerRequest(t *testing.T) {
 }
 
 func TestTranslate_PromptOverride(t *testing.T) {
-	mock := &mockClient{response: "result"}
-	task := translate.New(chat.SingleClient(mock),
+	mock := &mockClient{response: jsonResp("result")}
+	task := translate.New(mock,
 		translate.WithSystemPrompt("translate", "Custom system: translate {{.Text}} to {{.TargetLang}}"),
 	)
 
@@ -286,36 +298,6 @@ func TestTranslate_PromptOverride(t *testing.T) {
 	sys := mock.lastMessages[0].Content
 	if sys != "Custom system: translate Hello to he" {
 		t.Errorf("expected custom system prompt, got: %s", sys)
-	}
-}
-
-func TestTranslate_MultiModelRouting(t *testing.T) {
-	translateMock := &mockClient{response: "translated by deepseek"}
-	proofreadMock := &mockClient{response: "proofread by gemini"}
-
-	router := chat.Map(map[string]chat.Client{
-		"translate": translateMock,
-		"proofread": proofreadMock,
-	}, translateMock)
-
-	task := translate.New(router, translate.WithAutoProofread(true))
-
-	result, err := task.Translate(context.Background(), &translate.Request{
-		SourceLanguage: "en",
-		TargetLanguage: "he",
-		Text:           "Hello",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if result.Text != "proofread by gemini" {
-		t.Errorf("expected proofread result from gemini, got: %q", result.Text)
-	}
-	if translateMock.lastMessages == nil {
-		t.Error("translate client was not called")
-	}
-	if proofreadMock.lastMessages == nil {
-		t.Error("proofread client was not called")
 	}
 }
 
