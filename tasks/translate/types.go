@@ -27,6 +27,14 @@ type Result struct {
 	Text string
 }
 
+// chatResponse is the structured JSON response expected from the model.
+// The Comments field gives the model a dedicated place for reasoning,
+// notes, and translation commentary so they don't leak into the text.
+type chatResponse struct {
+	Translation string `json:"translation" llm:"The translated text"`
+	Comments    string `json:"comments,omitempty" llm:"Any translation notes, reasoning, or commentary"`
+}
+
 // Character represents a character in the source material.
 type Character struct {
 	Name        string `json:"name"`

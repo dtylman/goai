@@ -87,17 +87,19 @@ func (t *Task) doTranslate(ctx context.Context, req *Request) (*Result, error) {
 		return nil, err
 	}
 
-	resp, err := client.Chat(ctx, &chat.Request{
+	chatReq := &chat.Request{
 		Messages: []chat.Message{
 			{Role: chat.RoleSystem, Content: systemPrompt},
 			{Role: chat.RoleUser, Content: userPrompt},
 		},
-	})
-	if err != nil {
+	}
+
+	var cr chatResponse
+	if _, err := chat.ChatInto(ctx, client, chatReq, &cr); err != nil {
 		return nil, fmt.Errorf("translate: %w", err)
 	}
 
-	return &Result{Text: resp.Content}, nil
+	return &Result{Text: cr.Translation}, nil
 }
 
 func (t *Task) doProofread(ctx context.Context, req *Request, translation string) (*Result, error) {
@@ -123,17 +125,19 @@ func (t *Task) doProofread(ctx context.Context, req *Request, translation string
 		return nil, err
 	}
 
-	resp, err := client.Chat(ctx, &chat.Request{
+	chatReq := &chat.Request{
 		Messages: []chat.Message{
 			{Role: chat.RoleSystem, Content: systemPrompt},
 			{Role: chat.RoleUser, Content: userPrompt},
 		},
-	})
-	if err != nil {
+	}
+
+	var cr chatResponse
+	if _, err := chat.ChatInto(ctx, client, chatReq, &cr); err != nil {
 		return nil, fmt.Errorf("proofread: %w", err)
 	}
 
-	return &Result{Text: resp.Content}, nil
+	return &Result{Text: cr.Translation}, nil
 }
 
 func (t *Task) doFix(ctx context.Context, req *Request, badTranslation string) (*Result, error) {
@@ -159,15 +163,17 @@ func (t *Task) doFix(ctx context.Context, req *Request, badTranslation string) (
 		return nil, err
 	}
 
-	resp, err := client.Chat(ctx, &chat.Request{
+	chatReq := &chat.Request{
 		Messages: []chat.Message{
 			{Role: chat.RoleSystem, Content: systemPrompt},
 			{Role: chat.RoleUser, Content: userPrompt},
 		},
-	})
-	if err != nil {
+	}
+
+	var cr chatResponse
+	if _, err := chat.ChatInto(ctx, client, chatReq, &cr); err != nil {
 		return nil, fmt.Errorf("fix: %w", err)
 	}
 
-	return &Result{Text: resp.Content}, nil
+	return &Result{Text: cr.Translation}, nil
 }
