@@ -31,17 +31,17 @@ type Result struct {
 // The Comments field gives the model a dedicated place for reasoning,
 // notes, and translation commentary so they don't leak into the text.
 type chatResponse struct {
-	Translation string `json:"translation" llm:"The translated text"`
+	Translation string `json:"translation" llm:"The translated text, without any commentary or notes"`
 	Comments    string `json:"comments,omitempty" llm:"Any translation notes, reasoning, or commentary"`
 }
 
 // Character represents a character in the source material.
 type Character struct {
-	Name        string `json:"name"`
-	Gender      string `json:"gender"`
-	Age         int    `json:"age,omitempty"`
-	Role        string `json:"role"`
-	Description string `json:"description,omitempty"`
+	Name        string `json:"name" llm:"The character name"`
+	Gender      string `json:"gender" llm:"The character gender"`
+	Age         int    `json:"age,omitempty" llm:"The character age"`
+	Role        string `json:"role" llm:"The character role in the story"`
+	Description string `json:"description,omitempty" llm:"A brief description of the character"`
 }
 
 // ProjectContext provides metadata about the work being translated.
