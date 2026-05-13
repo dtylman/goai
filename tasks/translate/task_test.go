@@ -64,6 +64,93 @@ t.Errorf("system prompt missing genre: %s", sys)
 }
 }
 
+func TestTranslate_WithWritingStyle(t *testing.T) {
+mock := &mockClient{response: "translated"}
+task := translate.New(chat.SingleClient(mock), translate.WithProjectContext(&translate.ProjectContext{
+Title:        "The Great Novel",
+WritingStyle: "third-person omniscient, dark and introspective",
+}))
+
+_, err := task.Translate(context.Background(), &translate.Request{
+SourceLanguage: "en",
+TargetLanguage: "he",
+Text:           "It was a dark and stormy night.",
+})
+if err != nil {
+t.Fatalf("unexpected error: %v", err)
+}
+sys := mock.lastMessages[0].Content
+if !strings.Contains(sys, "third-person omniscient, dark and introspective") {
+t.Errorf("system prompt missing writing style: %s", sys)
+}
+}
+
+func TestTranslate_WithGlossary(t *testing.T) {
+mock := &mockClient{response: "translated"}
+task := translate.New(chat.SingleClient(mock), translate.WithProjectContext(&translate.ProjectContext{
+Title: "Harry Potter",
+Glossary: map[string]string{
+"butter-beer": "בירת חמאה",
+},
+}))
+
+_, err := task.Translate(context.Background(), &translate.Request{
+SourceLanguage: "en",
+TargetLanguage: "he",
+Text:           "He ordered a butter-beer.",
+})
+if err != nil {
+t.Fatalf("unexpected error: %v", err)
+}
+sys := mock.lastMessages[0].Content
+if !strings.Contains(sys, "butter-beer") {
+t.Errorf("system prompt missing glossary term: %s", sys)
+}
+if !strings.Contains(sys, "בירת חמאה") {
+t.Errorf("system prompt missing glossary translation: %s", sys)
+}
+}
+
+func TestFix_WithWritingStyleAndGlossary(t *testing.T) {
+mock := &mockClient{response: "fixed"}
+task := translate.New(chat.SingleClient(mock), translate.WithProjectContext(&translate.ProjectContext{
+Title:        "The Book",
+WritingStyle: "fast-paced with witty dialogue",
+Glossary:     map[string]string{"wand": "שרביט"},
+}))
+
+_, err := task.Fix(context.Background(), &translate.Request{
+SourceLanguage: "en",
+TargetLanguage: "he",
+Text:           "He waved his wand.",
+}, "bad translation")
+if err != nil {
+t.Fatalf("unexpected error: %v", err)
+}
+sys := mock.lastMessages[0].Content
+if !strings.Contains(sys, "fast-paced with witty dialogue") {
+t.Errorf("fix system prompt missing writing style: %s", sys)
+}
+if !strings.Contains(sys, "wand") || !strings.Contains(sys, "שרביט") {
+t.Errorf("fix system prompt missing glossary: %s", sys)
+}
+}
+
+func TestGlossaryFormatted(t *testing.T) {
+pc := &translate.ProjectContext{
+Glossary: map[string]string{"wand": "שרביט", "spell": "כישוף"},
+}
+formatted := pc.GlossaryFormatted()
+if !strings.Contains(formatted, `"wand"`) || !strings.Contains(formatted, `"שרביט"`) {
+t.Errorf("GlossaryFormatted missing entries: %s", formatted)
+}
+
+empty := &translate.ProjectContext{}
+if empty.GlossaryFormatted() != "" {
+t.Error("expected empty string for empty glossary")
+}
+}
+
 func TestTranslate_WithPreviousContext(t *testing.T) {
 mock := &mockClient{response: "translated"}
 task := translate.New(chat.SingleClient(mock))

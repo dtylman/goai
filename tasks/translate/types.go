@@ -1,5 +1,10 @@
 package translate
 
+import (
+	"fmt"
+	"strings"
+)
+
 // Request represents a single translation request.
 type Request struct {
 	// SourceLanguage is the language of the input text.
@@ -24,16 +29,33 @@ type Result struct {
 
 // Character represents a character in the source material.
 type Character struct {
-	Name   string `json:"name"`
-	Gender string `json:"gender"`
-	Role   string `json:"role"`
+	Name        string `json:"name"`
+	Gender      string `json:"gender"`
+	Age         int    `json:"age,omitempty"`
+	Role        string `json:"role"`
+	Description string `json:"description,omitempty"`
 }
 
 // ProjectContext provides metadata about the work being translated.
 type ProjectContext struct {
-	Title      string
-	Author     string
-	Genre      string
-	Synopsis   string
-	Characters []Character
+	Title        string
+	Author       string
+	Genre        string
+	Synopsis     string
+	WritingStyle string
+	Glossary     map[string]string
+	Characters   []Character
+}
+
+// GlossaryFormatted returns the glossary as a prompt-ready string.
+// Returns "" when the glossary is empty.
+func (p *ProjectContext) GlossaryFormatted() string {
+	if p == nil || len(p.Glossary) == 0 {
+		return ""
+	}
+	var buf strings.Builder
+	for term, trans := range p.Glossary {
+		fmt.Fprintf(&buf, "  \"%s\" → \"%s\"\n", term, trans)
+	}
+	return buf.String()
 }
