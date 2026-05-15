@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 )
 
 // Client is the interface that provider adapters implement.
@@ -31,4 +32,13 @@ func ChatInto(ctx context.Context, c Client, req *Request, target any) (*Respons
 		return resp, fmt.Errorf("decode response: %w", err)
 	}
 	return resp, nil
+}
+
+func Chat(ctx context.Context, c Client, req *Request) (*Response, error) {
+	schemaType := "none"
+	if req.Schema != nil {
+		schemaType = req.Schema.Type
+	}
+	log.Printf("invoking %T:%v chat with %v:%v", c, req.Model, schemaType, len(req.Messages))
+	return c.Chat(ctx, req)
 }

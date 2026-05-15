@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/dtylman/goai/chat"
+	"github.com/dtylman/goai/prompts"
 )
 
 // Task orchestrates OCR text cleanup.
@@ -27,18 +28,12 @@ func New(client chat.Client, opts ...Option) *Task {
 }
 
 // Clean processes raw OCR segments and returns structured, cleaned text.
-func (t *Task) Clean(ctx context.Context, req *Request) (*Result, error) {
-	data := &promptData{
-		Page:           req.Page,
-		Segments:       req.Segments,
-		ProjectContext: t.project,
-	}
-
-	systemPrompt, err := t.renderPrompt("system", data)
+func (t *Task) Clean(ctx context.Context, req *Request) (*Response, error) {
+	systemPrompt, err := prompts.Render("ocr", "default", chat.RoleSystem, "clean", req)
 	if err != nil {
 		return nil, fmt.Errorf("render system prompt: %w", err)
 	}
-	userPrompt, err := t.renderPrompt("user", data)
+	userPrompt, err := prompts.Render("ocr", "default", chat.RoleUser, "clean", req)
 	if err != nil {
 		return nil, fmt.Errorf("render user prompt: %w", err)
 	}
@@ -50,9 +45,10 @@ func (t *Task) Clean(ctx context.Context, req *Request) (*Result, error) {
 		},
 	}
 
-	var result Result
-	if _, err := chat.ChatInto(ctx, t.client, chatReq, &result); err != nil {
-		return nil, fmt.Errorf("clean page %d: %w", req.Page, err)
+	var result Response
+	resp, err := chat.ChatInto(ctx, t.client, chatReq, &result)
+	if err != nil {
+		return nil, fmt.Errorf("chat failed: %v, response: %v", err, resp.Content)
 	}
 
 	return &result, nil

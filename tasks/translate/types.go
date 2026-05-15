@@ -1,40 +1,5 @@
 package translate
 
-import (
-	"fmt"
-	"strings"
-)
-
-// Request represents a single translation request.
-type Request struct {
-	// SourceLanguage is the language of the input text.
-	SourceLanguage string
-	// TargetLanguage is the language of the output text.
-	TargetLanguage string
-	// Text is the paragraph to translate.
-	Text string
-	// PreviousSource contains preceding source paragraphs for context.
-	PreviousSource []string
-	// PreviousTarget contains the corresponding previous translations.
-	PreviousTarget []string
-	// Style overrides the task-level style for this request.
-	Style string
-}
-
-// Result represents the output of a translation.
-type Result struct {
-	// Text is the translated paragraph.
-	Text string
-}
-
-// chatResponse is the structured JSON response expected from the model.
-// The Comments field gives the model a dedicated place for reasoning,
-// notes, and translation commentary so they don't leak into the text.
-type chatResponse struct {
-	Translation string `json:"translation" llm:"The translated text, without any commentary or notes"`
-	Comments    string `json:"comments,omitempty" llm:"Any translation notes, reasoning, or commentary"`
-}
-
 // Character represents a character in the source material.
 type Character struct {
 	Name        string `json:"name" llm:"The character name"`
@@ -46,24 +11,34 @@ type Character struct {
 
 // ProjectContext provides metadata about the work being translated.
 type ProjectContext struct {
-	Title        string
-	Author       string
-	Genre        string
-	Synopsis     string
-	WritingStyle string
-	Glossary     map[string]string
-	Characters   []Character
+	Title        string            `json:"title" llm:"The title of the work being translated"`
+	Author       string            `json:"author" llm:"The author of the work being translated"`
+	Genre        string            `json:"genre" llm:"The genre of the work being translated"`
+	Synopsis     string            `json:"synopsis" llm:"A brief synopsis of the work being translated"`
+	WritingStyle string            `json:"writing_style" llm:"The writing style of the work being translated"`
+	Glossary     map[string]string `json:"glossary" llm:"A glossary of terms for the work being translated"`
+	Characters   []Character       `json:"characters" llm:"A list of characters in the work being translated"`
 }
 
-// GlossaryFormatted returns the glossary as a prompt-ready string.
-// Returns "" when the glossary is empty.
-func (p *ProjectContext) GlossaryFormatted() string {
-	if p == nil || len(p.Glossary) == 0 {
-		return ""
-	}
-	var buf strings.Builder
-	for term, trans := range p.Glossary {
-		fmt.Fprintf(&buf, "  \"%s\" → \"%s\"\n", term, trans)
-	}
-	return buf.String()
+// Request represents a single translation request.
+type Request struct {
+	ProjectContext *ProjectContext `json:"project_context,omitempty" llm:"Metadata about the work being translated, which may be used to inform the translation. This can be omitted if the Task was created with a ProjectContext."`
+	// SourceLanguage is the language of the input text.
+	SourceLanguage string `json:"source_language" llm:"The language of the input text, e.g. \"English\" or \"Chinese\""`
+	// TargetLanguage is the language of the output text.
+	TargetLanguage string `json:"target_language" llm:"The language of the output text, e.g. \"English\" or \"Chinese\""`
+	// Text is the paragraph to translate.
+	Text string `json:"text" llm:"The paragraph to translate"`
+	// PreviousSource contains preceding source paragraphs for context.
+	PreviousSource []string `json:"previous_source,omitempty" llm:"Preceding source paragraphs for context, ordered from oldest to most recent"`
+	// PreviousTarget contains the corresponding previous translations.
+	PreviousTarget []string `json:"previous_target,omitempty" llm:"The corresponding previous translations for context, ordered from oldest to most recent"`
+	// Style overrides the task-level style for this request.
+	Style string `json:"style,omitempty" llm:"The desired writing style for the translation, e.g. \"formal\", \"informal\", \"literary\", etc. Overrides the task-level style if set."`
+}
+
+// Result represents the output of a translation.
+type Result struct {
+	Translation string `json:"translation" llm:"The translated text, without any commentary or notes"`
+	Comments    string `json:"comments,omitempty" llm:"Any translation notes, reasoning, or commentary"`
 }

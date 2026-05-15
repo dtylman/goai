@@ -1,40 +1,24 @@
 package ocr
 
-// Segment represents a piece of text extracted via OCR.
-type Segment struct {
-	// Text is the raw OCR text.
-	Text string `json:"text" llm:"The raw OCR text"`
-	// FontSize is the detected font size, if available.
-	FontSize float64 `json:"font_size,omitempty" llm:"The detected font size"`
+// ProjectContext provides metadata about the document being processed.
+type ProjectContext struct {
+	Title    string `json:"title" llm:"The title of the document being processed"`
+	Author   string `json:"author" llm:"The author of the document"`
+	Genre    string `json:"genre" llm:"The genre of the document"`
+	Synopsis string `json:"synopsis" llm:"A brief summary of the document"`
 }
 
 // Request represents a request to clean OCR text.
 type Request struct {
-	// Page is the page number being processed.
-	Page int
-	// Segments contains the raw OCR text segments to clean.
-	Segments []Segment
+	Text           string          `json:"text" llm:"The raw OCR text to be cleaned"`
+	ProjectContext *ProjectContext `json:"project_context,omitempty" llm:"Metadata about the document being processed"`
 }
 
-// Paragraph represents a single cleaned paragraph.
-type Paragraph struct {
-	ID   string `json:"id" llm:"A unique identifier for this paragraph"`
-	Text string `json:"text" llm:"The cleaned paragraph text"`
-}
-
-// Result represents cleaned and structured OCR output.
-type Result struct {
-	Header    string      `json:"header" llm:"The page header text, if any"`
-	Body      []Paragraph `json:"body" llm:"The cleaned body paragraphs"`
-	Footer    string      `json:"footer" llm:"The page footer text, if any"`
-	Footnotes string      `json:"footnotes" llm:"Footnote text found on the page"`
-	Comments  string      `json:"comments" llm:"Any notes or observations about the OCR cleanup"`
-}
-
-// ProjectContext provides metadata about the document being processed.
-type ProjectContext struct {
-	Title    string
-	Author   string
-	Genre    string
-	Synopsis string
+// Response represents cleaned and structured OCR output.
+type Response struct {
+	Header    string `json:"header" llm:"The page header text, if any"`
+	Body      string `json:"body" llm:"The cleaned text"`
+	Footer    string `json:"footer" llm:"The page footer text, if any"`
+	Footnotes string `json:"footnotes" llm:"Footnote text found on the page"`
+	Comments  string `json:"comments" llm:"Any notes or observations about the OCR cleanup"`
 }
