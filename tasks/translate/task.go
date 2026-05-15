@@ -5,26 +5,24 @@ import (
 	"fmt"
 
 	"github.com/dtylman/goai/chat"
+	"github.com/dtylman/goai/prompts"
 )
 
 // Task orchestrates translation workflows.
 type Task struct {
-	client          chat.Client
-	project         *ProjectContext
-	style           string
-	autoProofread   bool
-	promptOverrides map[string]string
+	client        chat.Client
+	Project       *ProjectContext
+	Style         string
+	AutoProofread bool
 }
 
 // New creates a new translation Task with the given client and options.
-func New(client chat.Client, opts ...Option) *Task {
+func New(client chat.Client, style string, project *ProjectContext) *Task {
 	t := &Task{
-		client:          client,
-		style:           "strict",
-		promptOverrides: make(map[string]string),
-	}
-	for _, opt := range opts {
-		opt(t)
+		client:        client,
+		Style:         style,
+		Project:       project,
+		AutoProofread: true,
 	}
 	return t
 }
@@ -36,8 +34,8 @@ func (t *Task) Translate(ctx context.Context, req *Request) (*Result, error) {
 		return nil, err
 	}
 
-	if t.autoProofread {
-		result, err = t.doProofread(ctx, req, result.Text)
+	if t.AutoProofread {
+		result, err = t.doProofread(ctx, req, result.Translation)
 		if err != nil {
 			return nil, fmt.Errorf("proofread: %w", err)
 		}
@@ -57,27 +55,17 @@ func (t *Task) Fix(ctx context.Context, req *Request, badTranslation string) (*R
 }
 
 func (t *Task) doTranslate(ctx context.Context, req *Request) (*Result, error) {
-	style := req.Style
-	if style != "" {
-		// Temporarily override style for this request
-		origStyle := t.style
-		t.style = style
-		defer func() { t.style = origStyle }()
+	if req.Text == "" {
+		return &Result{Translation: ""}, nil
 	}
-
-	data := &promptData{
-		SourceLang:      req.SourceLanguage,
-		TargetLang:      req.TargetLanguage,
-		Text:            req.Text,
-		PreviousContext: formatPreviousContext(req.SourceLanguage, req.TargetLanguage, req.PreviousSource, req.PreviousTarget),
-		ProjectContext:  t.project,
+	if req.Style == "" {
+		req.Style = t.Style
 	}
-
-	systemPrompt, err := t.renderPrompt("translate", "system", data)
+	systemPrompt, err := prompts.Render("translate", req.Style, chat.RoleSystem, "translate", req)
 	if err != nil {
 		return nil, err
 	}
-	userPrompt, err := t.renderPrompt("translate", "user", data)
+	userPrompt, err := prompts.Render("translate", req.Style, chat.RoleUser, "translate", req)
 	if err != nil {
 		return nil, err
 	}
@@ -89,28 +77,26 @@ func (t *Task) doTranslate(ctx context.Context, req *Request) (*Result, error) {
 		},
 	}
 
-	var cr chatResponse
-	if _, err := chat.ChatInto(ctx, t.client, chatReq, &cr); err != nil {
-		return nil, fmt.Errorf("translate: %w", err)
+	var result Result
+	resp, err := chat.ChatInto(ctx, t.client, chatReq, &result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to translate: %w, %v:", err, resp.Content)
 	}
-
-	return &Result{Text: cr.Translation}, nil
+	return &result, nil
 }
 
-func (t *Task) doProofread(ctx context.Context, req *Request, translation string) (*Result, error) {
-	data := &promptData{
-		SourceLang:     req.SourceLanguage,
-		TargetLang:     req.TargetLanguage,
-		Text:           req.Text,
-		Translation:    translation,
-		ProjectContext: t.project,
+func (t *Task) doProofread(ctx context.Context, tr *Request, translation string) (*Result, error) {
+	req := &ProofreadRequest{
+		TranslationReq: tr,
+		DraftText:      translation,
 	}
 
-	systemPrompt, err := t.renderPrompt("proofread", "system", data)
+	systemPrompt, err := prompts.Render("translate", tr.Style, chat.RoleSystem, "proofread", req)
 	if err != nil {
 		return nil, err
 	}
-	userPrompt, err := t.renderPrompt("proofread", "user", data)
+
+	userPrompt, err := prompts.Render("translate", tr.Style, chat.RoleUser, "proofread", req)
 	if err != nil {
 		return nil, err
 	}
@@ -122,28 +108,26 @@ func (t *Task) doProofread(ctx context.Context, req *Request, translation string
 		},
 	}
 
-	var cr chatResponse
-	if _, err := chat.ChatInto(ctx, t.client, chatReq, &cr); err != nil {
-		return nil, fmt.Errorf("proofread: %w", err)
+	var result Result
+	resp, err := chat.ChatInto(ctx, t.client, chatReq, &result)
+	if err != nil {
+		return nil, fmt.Errorf("proofread: %w, %v", err, resp.Content)
 	}
 
-	return &Result{Text: cr.Translation}, nil
+	return &result, nil
 }
 
 func (t *Task) doFix(ctx context.Context, req *Request, badTranslation string) (*Result, error) {
-	data := &promptData{
-		SourceLang:     req.SourceLanguage,
-		TargetLang:     req.TargetLanguage,
-		Text:           req.Text,
-		Translation:    badTranslation,
-		ProjectContext: t.project,
+	fixReq := &FixRequest{
+		TranslationReq: req,
+		DraftText:      badTranslation,
 	}
 
-	systemPrompt, err := t.renderPrompt("fix", "system", data)
+	systemPrompt, err := prompts.Render("translate", "default", chat.RoleSystem, "fix", fixReq)
 	if err != nil {
 		return nil, err
 	}
-	userPrompt, err := t.renderPrompt("fix", "user", data)
+	userPrompt, err := prompts.Render("translate", "default", chat.RoleUser, "fix", fixReq)
 	if err != nil {
 		return nil, err
 	}
@@ -155,10 +139,11 @@ func (t *Task) doFix(ctx context.Context, req *Request, badTranslation string) (
 		},
 	}
 
-	var cr chatResponse
-	if _, err := chat.ChatInto(ctx, t.client, chatReq, &cr); err != nil {
-		return nil, fmt.Errorf("fix: %w", err)
+	var result Result
+	resp, err := chat.ChatInto(ctx, t.client, chatReq, &result)
+	if err != nil {
+		return nil, fmt.Errorf("fix: %w, %v", err, resp.Content)
 	}
 
-	return &Result{Text: cr.Translation}, nil
+	return &result, nil
 }

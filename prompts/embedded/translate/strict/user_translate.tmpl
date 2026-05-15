@@ -1,5 +1,24 @@
-Translate the following paragraph from '{{.SourceLang}}' to '{{.TargetLang}}'.{{if .PreviousContext}} For context, here are the preceding paragraphs and their translations:
-{{.PreviousContext}}
-{{end}}
+Translate the following paragraph from '{{.SourceLanguage}}' to '{{.TargetLanguage}}'. 
+{{- if or .PreviousSource .PreviousTarget}}
+
+--- Context ---
+{{- if .PreviousSource}}
+Preceding Source Text:
+{{- range .PreviousSource}}
+{{.}}
+{{- end}}
+{{- end}}
+{{- if .PreviousTarget}}
+
+Preceding Translated Text:
+{{- range .PreviousTarget}}
+{{.}}
+{{- end}}
+{{- end}}
+--- End Context ---
+{{- end}}
+
 Paragraph to translate:
 {{.Text}}
+
+Return the result as structured JSON matching the expected output schema.

@@ -1,7 +1,14 @@
-Proofread the following translation from '{{.SourceLang}}' to '{{.TargetLang}}'. Fix grammar, spelling, and readability issues while preserving the original meaning.
+Please proofread and refine the following translation.
+{{- if .TranslatorNotes}}
 
-Source:
-{{.Text}}
+Notes from the initial translator:
+"{{.TranslatorNotes}}"
+{{- end}}
 
-Current translation:
-{{.Translation}}
+--- Original Source Text ('{{.TranslationReq.SourceLanguage}}') ---
+{{.TranslationReq.Text}}
+
+--- Draft Translation ('{{.TranslationReq.TargetLanguage}}') ---
+{{.DraftText}}
+
+Return the finalized translation as structured JSON using the 'translation' key, and any editorial observations in the 'comments' key.

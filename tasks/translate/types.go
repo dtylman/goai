@@ -37,6 +37,19 @@ type Request struct {
 	Style string `json:"style,omitempty" llm:"The desired writing style for the translation, e.g. \"formal\", \"informal\", \"literary\", etc. Overrides the task-level style if set."`
 }
 
+// ProofreadRequest is the input for the proofreader.
+type ProofreadRequest struct {
+	TranslationReq  *Request `json:"translation_req" llm:"The original translation request containing source text and context"`
+	DraftText       string   `json:"draft_text" llm:"The draft translation to be proofread"`
+	TranslatorNotes string   `json:"translator_notes,omitempty" llm:"Comments left by the original translator"`
+}
+
+// FixRequest is the input when fixing a rejected/broken translation.
+type FixRequest struct {
+	TranslationReq *Request `json:"translation_req" llm:"The original translation request"`
+	DraftText      string   `json:"draft_text" llm:"The flawed translation"`
+}
+
 // Result represents the output of a translation.
 type Result struct {
 	Translation string `json:"translation" llm:"The translated text, without any commentary or notes"`
