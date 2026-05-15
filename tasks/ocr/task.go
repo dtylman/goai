@@ -10,19 +10,13 @@ import (
 
 // Task orchestrates OCR text cleanup.
 type Task struct {
-	client          chat.Client
-	project         *ProjectContext
-	promptOverrides map[string]string
+	client chat.Client
 }
 
 // New creates a new OCR cleanup Task with the given client and options.
-func New(client chat.Client, opts ...Option) *Task {
+func New(client chat.Client) *Task {
 	t := &Task{
-		client:          client,
-		promptOverrides: make(map[string]string),
-	}
-	for _, opt := range opts {
-		opt(t)
+		client: client,
 	}
 	return t
 }

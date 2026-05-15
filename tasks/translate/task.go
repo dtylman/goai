@@ -11,17 +11,13 @@ import (
 // Task orchestrates translation workflows.
 type Task struct {
 	client        chat.Client
-	Project       *ProjectContext
-	Style         string
 	AutoProofread bool
 }
 
 // New creates a new translation Task with the given client and options.
-func New(client chat.Client, style string, project *ProjectContext) *Task {
+func New(client chat.Client) *Task {
 	t := &Task{
 		client:        client,
-		Style:         style,
-		Project:       project,
 		AutoProofread: true,
 	}
 	return t
@@ -59,7 +55,7 @@ func (t *Task) doTranslate(ctx context.Context, req *Request) (*Result, error) {
 		return &Result{Translation: ""}, nil
 	}
 	if req.Style == "" {
-		req.Style = t.Style
+		req.Style = "default"
 	}
 	systemPrompt, err := prompts.Render("translate", req.Style, chat.RoleSystem, "translate", req)
 	if err != nil {
@@ -91,12 +87,12 @@ func (t *Task) doProofread(ctx context.Context, tr *Request, translation string)
 		DraftText:      translation,
 	}
 
-	systemPrompt, err := prompts.Render("translate", tr.Style, chat.RoleSystem, "proofread", req)
+	systemPrompt, err := prompts.Render("translate", "default", chat.RoleSystem, "proofread", req)
 	if err != nil {
 		return nil, err
 	}
 
-	userPrompt, err := prompts.Render("translate", tr.Style, chat.RoleUser, "proofread", req)
+	userPrompt, err := prompts.Render("translate", "default", chat.RoleUser, "proofread", req)
 	if err != nil {
 		return nil, err
 	}
